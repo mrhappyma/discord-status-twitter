@@ -10,6 +10,7 @@ import {
   MessageActionRowComponentBuilder,
 } from "discord.js";
 import dotenv from "dotenv";
+import { TwitterApi } from "twitter-api-v2";
 
 dotenv.config();
 
@@ -17,6 +18,12 @@ const client = new Client({
   intents: [GatewayIntentBits.GuildPresences, GatewayIntentBits.Guilds],
 });
 const prisma = new PrismaClient();
+const twitterClient = new TwitterApi({
+  appKey: process.env.TWITTER_API_KEY,
+  appSecret: process.env.TWITTER_API_SECRET,
+  accessToken: process.env.TWITTER_ACCESS_TOKEN,
+  accessSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
+});
 
 client.on("presenceUpdate", async (oldPresence, newPresence) => {
   console.log("it was triggerd at least");
@@ -63,12 +70,32 @@ client.on("ready", () => {
   console.log("client is ready!");
 });
 
-client.on("interactionCreate", (interaction) => {
+client.on("interactionCreate", async (interaction) => {
   if (interaction.isButton()) {
     if (interaction.customId == "no") {
-      interaction.message.delete();
+      interaction.update({ components: [] });
+      prisma.alreadySent.delete({
+        where: {
+          status: interaction.message.embeds[0].description ?? undefined,
+        },
+      });
     }
     if (interaction.customId == "yes") {
+      let tweet = await twitterClient.v2.tweet(
+        //@ts-ignore
+        interaction.message.embeds[0].description
+      );
+      let actionRow =
+        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+          new ButtonBuilder()
+            .setLabel("View tweet")
+            .setStyle(ButtonStyle.Link)
+            .setURL("https://twitter.com/user____exe/status/" + tweet.data.id)
+        );
+      let embed = EmbedBuilder.from(interaction.message.embeds[0]).setTitle(
+        "Tweeted!"
+      );
+      interaction.update({ components: [actionRow], embeds: [embed] });
     }
   }
 });
