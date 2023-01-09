@@ -28,6 +28,7 @@ const twitterClient = new TwitterApi({
 client.on("presenceUpdate", async (oldPresence, newPresence) => {
   console.log("it was triggerd at least");
   if (newPresence.user?.id != "606526727753170969") return;
+  if (!newPresence.activities[0]) return
   if (newPresence.activities[0].type != ActivityType.Custom) return;
   if (!newPresence.activities[0].state) return;
   console.log("got past checks");
